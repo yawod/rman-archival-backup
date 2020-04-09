@@ -1,0 +1,21 @@
+# Copyright © 2020 Andrea Monti. All rights reserved.
+# These scripts come without warranty of any kind. Use them at your own risk. 
+# I assume no liability for the accuracy, correctness, completeness, or 
+# usefulness of any information provided by this files nor for any sort of 
+# damages using these scripts may cause.
+#
+# date:     2020-04-09
+# version:  2.7
+# history:
+# 2020-04-09   MontiA    spellchecking, neated
+
+sql 'alter session set NLS_DATE_FORMAT="dd/mm/yyyy hh24:mi:ss" ' ;
+
+show all ;
+
+run  
+{
+  delete noprompt obsolete ;
+  backup current controlfile                            format '%d_%T_%u_ctrl.bkp' tag 'CTRL' ;
+}
+

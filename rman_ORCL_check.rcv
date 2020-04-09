@@ -1,0 +1,56 @@
+# Copyright © 2020 Andrea Monti. All rights reserved.
+# These scripts come without warranty of any kind. Use them at your own risk. 
+# I assume no liability for the accuracy, correctness, completeness, or 
+# usefulness of any information provided by this files nor for any sort of 
+# damages using these scripts may cause.
+#
+# date:     2020-04-09
+# version:  2.7
+# history:
+# 2020-04-09   MontiA    spellchecking, neated
+
+sql 'alter session set NLS_DATE_FORMAT="dd/mm/yyyy hh24:mi:ss" ' ;
+
+show all ;
+
+run  
+{
+  # This script will be used to crosscheck and validate backup.
+  # Since we may accept this operation to run slower than ordinary backup, I will
+  # make an explic allocation of a single channel in order not to use the
+  # same degree of parallelism that we configured in the default rman environment.
+  # Please remember that parallelism will not work with Standard Edition:
+  # if you allocate more sbt_tape channels while using SE, only one channel will be used;
+  # moreover you will get RMAN warnings which might be interpreted as failures
+  #
+  allocate channel c1 device type 'SBT_TAPE' parms 'ENV=(TDPO_OPTFILE=/home/oracle/scripts/ORCL/TSM/TDP/ORCL_tdpo.opt)' ; 
+  #allocate channel c2 ;
+
+  crosscheck archivelog all ;
+  crosscheck backup ; 
+  crosscheck copy ;
+
+  # - restore validate will not write anything: it will only READ the backup
+  # - restore database validate will use the latest full or level 0 backup,
+  #   regardless of its retention policy (long-term or stadard retention)
+  # - restore archivelog all would try to restore all archivelog hence it
+  #   would raise errors for any deleted archivelog. Validating archivelog
+  #   in the last 36 hours ( from time ' sysdate - 36 / 24 ' ) seems to be 
+  #   reasonable
+
+  restore spfile validate ;
+  restore controlfile validate ;
+  # restoring the whole database without parallelism can take some time. Consider running it 
+  # - only once a week
+  # - with increased parallelism
+  # - only on a subset of the database, i.e. "restore datafile 1,2 validate" or "restore tablespace SYSTEM,SYSAUX validate"
+  restore database validate ; 
+  restore archivelog from time ' sysdate - 36 / 24 ' validate;
+
+  release  channel c1 ;
+  #release  channel c2 ;
+}
+
+list expired backup ; 
+list expired copy ;
+
